@@ -1,4 +1,5 @@
 import org.apache.zookeeper.*;
+import org.apache.zookeeper.data.Stat;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -15,15 +16,37 @@ public class LeaderElection implements Watcher {
 
     public static void main(String[] args) throws IOException, InterruptedException, KeeperException {
 
-        LeaderElection leaderElection = new LeaderElection();
-        leaderElection.connectToZookeeper();
-        leaderElection.volunteerForLeadership();
-        leaderElection.elecLeader();
+        LeaderElection leaderElection = new LeaderElection(); // create an instance of app, this app will be a node too
+
+        leaderElection.connectToZookeeper(); // connect this app instance to ZooKeeper server
+        leaderElection.checkNodeAndCreate(ELECTION_NAMESPACE); // check and create the election node (parent) node of this app instance 's node
+        leaderElection.volunteerForLeadership(); // create this node
+        leaderElection.elecLeader(); // self-elect this node to leader
+
         leaderElection.run();
         leaderElection.close();
+
         System.out.println("Disconnected from ZooKeeper, exit application");
     }
 
+    /**
+     * Check and create the node if it isn't exist
+     * @param nodeName
+     * @throws KeeperException
+     * @throws InterruptedException
+     */
+    public void checkNodeAndCreate(String nodeName) throws KeeperException, InterruptedException {
+        Stat stat = zooKeeper.exists(nodeName, false);
+        if (stat == null) { // the node is not exist
+            String path = zooKeeper.create(nodeName, new byte[]{}, ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.CONTAINER);
+        }
+    }
+
+    /**
+     * Create volunteer (candidate) node for leader
+     * @throws KeeperException
+     * @throws InterruptedException
+     */
     public void volunteerForLeadership() throws KeeperException, InterruptedException {
         String znodePrefix = ELECTION_NAMESPACE + "/c_";
         String znodeFullPath = zooKeeper.create(znodePrefix, new byte[]{}, ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL_SEQUENTIAL);
@@ -32,6 +55,11 @@ public class LeaderElection implements Watcher {
         System.out.println("current znode name: " + this.currentZnodeName);
     }
 
+    /**
+     * when adding a node, elect this node (itself) as a candidate for leader
+     * @throws KeeperException
+     * @throws InterruptedException
+     */
     public void elecLeader() throws KeeperException, InterruptedException {
         List<String> children = zooKeeper.getChildren(ELECTION_NAMESPACE, false);
         Collections.sort(children);
@@ -44,6 +72,10 @@ public class LeaderElection implements Watcher {
         }
     }
 
+    /**
+     * connect to ZooKeeper server
+     * @throws IOException
+     */
     private void connectToZookeeper() throws IOException {
         this.zooKeeper = new ZooKeeper(ZOOKEEPER_ADDRESS, SESSION_TIMEOUT, this);
     }
