@@ -1,0 +1,7 @@
+cluster\management\LeaderElection.class
+cluster\management\LeaderElection$1.class
+cluster\management\ServiceRegistry.class
+cluster\management\OnElectionCallback.class
+AppMain.class
+OnElectionAction.class
+AppMain$1.class
